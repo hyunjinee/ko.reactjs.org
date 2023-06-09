@@ -1,37 +1,37 @@
 ---
-title: 'Lifecycle of Reactive Effects'
+title: 반응형 Effect의 생명주기
 ---
 
 <Intro>
 
-Effects have a different lifecycle from components. Components may mount, update, or unmount. An Effect can only do two things: to start synchronizing something, and later to stop synchronizing it. This cycle can happen multiple times if your Effect depends on props and state that change over time. React provides a linter rule to check that you've specified your Effect's dependencies correctly. This keeps your Effect synchronized to the latest props and state.
+Effect는 컴포넌트와 다른 생명주기를 갖습니다. 컴포넌트는 마운트, 업데이트 또는 언마운트 될 수 있습니다. Effect는 두 가지 작업만 할 수 있습니다: 무언가와 동기화를 시작하는 것과 이후에 동기화를 중지하는 것입니다. 이 사이클은 시간이 지남에 따라 변하는 props와 state에 따라 Effect가 달라지는 경우 여러번 발생할 수 있습니다. React는 Effect의 의존성 배열을 올바르게 지정했는지 확인할 수 있는 린터 규칙을 제공합니다. 이렇게 하면 Effect가 최신 props와 state로 동기화됩니다. React는 Effect의 의존성을 올바르게 지정했는지 확인할 수 있는 린터 규칙을 제공합니다. 이렇게 하면 Effect가 최신 props와 state로 동기화됩니다.
 
 </Intro>
 
 <YouWillLearn>
 
-- How an Effect's lifecycle is different from a component's lifecycle
-- How to think about each individual Effect in isolation
-- When your Effect needs to re-synchronize, and why
-- How your Effect's dependencies are determined
-- What it means for a value to be reactive
-- What an empty dependency array means
-- How React verifies your dependencies are correct with a linter
-- What to do when you disagree with the linter
+- Effect의 생명주기가 컴포넌트의 생명주기와 다른점
+- 각 개별 Effect를 분리하여 생각하는 방법
+- Effect를 다시 동기화해야 하는 경우와 그 이유
+- Effect의 의존성 결정 방식
+- 값이 반응형이라는 것이 무엇을 의미하는지
+- 빈 의존성 배열의 의미
+- React가 린터로 의존성이 올바른지 확인하는 방법
+- 린터에 동의하지 않을 때 대처 방법
 
 </YouWillLearn>
 
-## The lifecycle of an Effect {/*the-lifecycle-of-an-effect*/}
+## Effect의 생명주기 {/*the-lifecycle-of-an-effect*/}
 
-Every React component goes through the same lifecycle:
+모든 컴포넌트는 동일한 라이프사이클을 거칩니다:
 
-- A component _mounts_ when it's added to the screen.
-- A component _updates_ when it receives new props or state, usually in response to an interaction.
-- A component _unmounts_ when it's removed from the screen.
+- 컴포넌트가 화면에 추가되면 마운트됩니다.
+- 컴포넌트는 일반적으로 상호작용에 대한 응답으로 새로운 props 또는 state를 수신하면 업데이트됩니다.
+- 컴포넌트가 화면에서 제거되면 언마운트됩니다.
 
-**It's a good way to think about components, but _not_ about Effects.** Instead, try to think about each Effect independently from your component's lifecycle. An Effect describes how to [synchronize an external system](/learn/synchronizing-with-effects) to the current props and state. As your code changes, synchronization will need to happen more or less often.
+**이는 컴포넌트에 대해 생각하기에 좋은 방법이지만 Effect에 대해서는 그렇지 않습니다.** Effect는 현재 props와 state에 기반하여 [외부 시스템과 동기화](/learn/synchronizing-with-effects)하는 방법을 제공합니다. 코드가 변경되면 동기화를 더 자주 또는 덜 자주 수행해야 합니다.
 
-To illustrate this point, consider this Effect connecting your component to a chat server:
+이 점을 설명하기 위해 컴포넌트를 채팅 서버에 연결하는 Effect를 예로 들어보겠습니다:
 
 ```js
 const serverUrl = 'https://localhost:1234';
@@ -48,7 +48,7 @@ function ChatRoom({ roomId }) {
 }
 ```
 
-Your Effect's body specifies how to **start synchronizing:**
+Effect의 본문에는 **동기화 시작** 방법이 명시되어 있습니다:
 
 ```js {2-3}
     // ...
@@ -60,7 +60,7 @@ Your Effect's body specifies how to **start synchronizing:**
     // ...
 ```
 
-The cleanup function returned by your Effect specifies how to **stop synchronizing:**
+Effect에서 반환되는 정리 함수는 **동기화를 중지**하는 방법을 지정합니다:
 
 ```js {5}
     // ...
@@ -72,17 +72,17 @@ The cleanup function returned by your Effect specifies how to **stop synchronizi
     // ...
 ```
 
-Intuitively, you might think that React would **start synchronizing** when your component mounts and **stop synchronizing** when your component unmounts. However, this is not the end of the story! Sometimes, it may also be necessary to **start and stop synchronizing multiple times** while the component remains mounted.
+직관적으로 React는 컴포넌트가 마운트될 때 **동기화를 시작**하고 컴포넌트가 마운트 해제될 때 **동기화를 중지**할 것이라고 생각할 수 있습니다. 하지만, 이것이 이야기의 끝이 아닙니다! 때로는 컴포넌트가 마운트된 상태에서 **동기화를 여러 번 시작하고 중지**해야 할 수도 있습니다.
 
-Let's look at _why_ this is necessary, _when_ it happens, and _how_ you can control this behavior.
+이러한 동작이 필요한 _이유_ 와 _발생 시기_, 그리고 이러한 동작을 제어할 수 있는 _방법_ 을 살펴보겠습니다.
 
 <Note>
 
-Some Effects don't return a cleanup function at all. [More often than not,](/learn/synchronizing-with-effects#how-to-handle-the-effect-firing-twice-in-development) you'll want to return one--but if you don't, React will behave as if you returned an empty cleanup function.
+일부 Effect는 정리 함수를 전혀 반환하지 않습니다. [대부분의 경우](/learn/synchronizing-with-effects#how-to-handle-the-effect-firing-twice-in-development) 함수를 반환하고 싶겠지만, 그렇지 않은 경우 React는 빈 정리 함수를 반환한 것처럼 동작합니다.
 
 </Note>
 
-### Why synchronization may need to happen more than once {/*why-synchronization-may-need-to-happen-more-than-once*/}
+### 동기화가 한 번 이상 수행되어야 하는 이유 {/*why-synchronization-may-need-to-happen-more-than-once*/}
 
 Imagine this `ChatRoom` component receives a `roomId` prop that the user picks in a dropdown. Let's say that initially the user picks the `"general"` room as the `roomId`. Your app displays the `"general"` chat room:
 
